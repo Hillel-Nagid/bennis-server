@@ -79,13 +79,16 @@ struct UserInfo {
 async fn get_orders(State(db): State<mongodb::Database>) -> (StatusCode, Json<Vec<Order>>) {
     let collection: mongodb::Collection<Order> = db.collection::<Order>("orders");
     let mut orders = collection
-        .find(doc! {}, FindOptions::builder().build()).await
+        .find(doc! {}, None)
         .ok()
         .expect("Failed getting orders");
     // let ser_orders: Vec<Order> = orders.try_collect().await.ok().expect("Failed serializing");
     let mut final_orders: Vec<Order> = vec![];
-    while let Some(order) = orders.try_next().await.ok().expect("Failed method 2") {
-        final_orders.push(order);
+    while let Some(result) = orders.next().await?{
+        match(result){
+             Ok(order) => final_orders.push(order);
+             Err(e) => eprintln!("{}",e)
+        }
     }
     println!("{:?}", final_orders);
     // for order in ser_orders {
