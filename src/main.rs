@@ -84,7 +84,7 @@ async fn get_orders(State(db): State<mongodb::Database>) -> (StatusCode, Json<Ve
         .expect("Failed getting orders");
     // let ser_orders: Vec<Order> = orders.try_collect().await.ok().expect("Failed serializing");
     let mut final_orders: Vec<Order> = vec![];
-    while let Some(order) = orders.try_next().await.ok().expect("Failed method 2") {
+    while let Some(order) = orders.try_next().await.expect("Failed method 2") {
         final_orders.push(order);
     }
     println!("{:?}", final_orders);
