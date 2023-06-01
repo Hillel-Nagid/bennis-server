@@ -7,7 +7,7 @@ use axum::{
 use diesel::prelude::*;
 use dotenvy::dotenv;
 use std::env;
-use crate::models::*;
+use crate::{models::*, schema::{menu_items, orders}};
 
 
 fn establish_connection() -> PgConnection{
@@ -21,7 +21,7 @@ pub async fn get_orders() -> (StatusCode, Json<Vec<Order>>) {
     use crate::schema::orders::dsl::*;
 
     let connection = &mut establish_connection();
-    let result = orders.select(Order::as_select()).load::<Order>(connection).expect("error");
+    let result = orders.load::<Order>(connection).expect("error");
     (StatusCode::OK, Json(result))
 }
 

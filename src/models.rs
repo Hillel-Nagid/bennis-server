@@ -29,12 +29,12 @@ pub struct NewAddition<'a>{
 
 #[derive(Serialize, Deserialize,Queryable,Selectable,AsChangeset)]
 #[table_name="menu_items"]
-struct MenuItem {
+pub struct MenuItem {
     pub id: i32,
     pub name: String,
     pub additions: Option<String>,
     pub price: f64,
-    pub image_url: String,
+    pub image_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Insertable)]
