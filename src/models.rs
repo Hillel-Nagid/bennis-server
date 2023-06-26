@@ -1,17 +1,42 @@
-use diesel::{Queryable, Insertable, deserialize::{FromSql, FromSqlRow}, pg::Pg, sql_types::Text, serialize::{ToSql, Output, self}, expression::AsExpression};
-use serde::{Serialize, Deserialize};
-use crate::schema::{*, self};
+use diesel::{
+    Queryable,
+    Insertable,
+    deserialize::{ FromSql, FromSqlRow },
+    pg::{ Pg, sql_types },
+    sql_types::{ Text, Integer },
+    serialize::{ ToSql, Output, self },
+    expression::AsExpression,
+};
+use serde::{ Serialize, Deserialize };
+use crate::schema::{ *, self };
 
-#[derive(Serialize, Deserialize, Debug,AsExpression)]
-#[sql_type="schema::sql_types::OrderStatus"]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
+#[diesel(sql_type = Integer)]
 pub enum OrderStatus {
     Finished,
     Processing,
 }
-
-
-#[derive(Serialize, Deserialize,Queryable,Selectable,AsChangeset)]
-#[table_name="additions"]
+impl FromSql<Integer, Pg> for OrderStatus {
+    fn from_sql(
+        bytes: <Pg as diesel::backend::Backend>::RawValue<'_>
+    ) -> diesel::deserialize::Result<Self> {
+        match <i32 as FromSql<Integer, Pg>>::from_sql(bytes)? {
+            0 => Ok(OrderStatus::Processing),
+            1 => Ok(OrderStatus::Finished),
+            x => Err(format!("Unrecognized variant {}", x).into()),
+        }
+    }
+}
+impl ToSql<Integer, Pg> for OrderStatus {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
+        match self {
+            OrderStatus::Processing => <i32 as ToSql<Integer, Pg>>::to_sql(&0, out),
+            OrderStatus::Finished => <i32 as ToSql<Integer, Pg>>::to_sql(&1, out),
+        }
+    }
+}
+#[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset)]
+#[diesel(table_name = additions)]
 pub struct Addition {
     pub id: i32,
     pub name: String,
@@ -20,15 +45,15 @@ pub struct Addition {
 }
 
 #[derive(Serialize, Deserialize, Debug, Insertable)]
-#[table_name = "additions"]
-pub struct NewAddition<'a>{
+#[diesel(table_name = additions)]
+pub struct NewAddition<'a> {
     pub name: &'a str,
     pub price: f64,
-    pub image_url:Option<&'a str>
+    pub image_url: Option<&'a str>,
 }
 
-#[derive(Serialize, Deserialize,Queryable,Selectable,AsChangeset)]
-#[table_name="menu_items"]
+#[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset)]
+#[diesel(table_name = menu_items)]
 pub struct MenuItem {
     pub id: i32,
     pub name: String,
@@ -38,45 +63,53 @@ pub struct MenuItem {
 }
 
 #[derive(Serialize, Deserialize, Debug, Insertable)]
-#[table_name = "menu_items"]
-pub struct NewMenuItem<'a>{
+#[diesel(table_name = menu_items)]
+pub struct NewMenuItem<'a> {
     pub name: &'a str,
     pub additions: Option<&'a str>,
     pub price: f64,
-    pub image_url:Option<&'a str>
+    pub image_url: Option<&'a str>,
 }
 
-#[derive(Serialize, Deserialize,Queryable,Selectable,AsChangeset)]
-#[table_name="orders"]
+#[derive(
+    Serialize,
+    Deserialize,
+    Queryable,
+    Selectable,
+    AsChangeset,
+    Identifiable,
+    PartialEq,
+    Clone
+)]
+#[diesel(table_name = orders)]
 pub struct Order {
     pub id: i32,
-    pub customer: Option<i32>,
+    pub customer_id: i32,
+    pub customer_name: String,
     pub components: String,
-    pub status: OrderStatus,
+    pub price: f64,
+    pub status: Option<OrderStatus>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Insertable, PartialEq, Clone)]
+#[diesel(table_name = orders)]
+pub struct NewOrder {
+    pub customer_name: String,
+    pub components: String,
     pub price: f64,
 }
 
-
-#[derive(Serialize, Deserialize, Debug, Insertable)]
-#[table_name = "orders"]
-pub struct NewOrder<'a>{
-    pub customer: Option<i32>,
-    pub components: &'a str,
-    pub status: OrderStatus,
-    pub price: f64
-}
-
-#[derive(Serialize, Deserialize,Queryable,Selectable,AsChangeset)]
-#[table_name="customer_info"]
+#[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset, Eq, PartialEq)]
+#[diesel(table_name = customer_info)]
 pub struct CustomerInfo {
     pub id: i32,
     pub name: String,
     pub phone: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Insertable)]
-#[table_name = "customer_info"]
-pub struct NewCustomer<'a>{
-    pub name: &'a str,
-    pub phone: Option<&'a str>
+#[derive(Serialize, Deserialize, Debug, Insertable, Queryable)]
+#[diesel(table_name = customer_info)]
+pub struct NewCustomer {
+    pub name: String,
+    pub phone: Option<String>,
 }

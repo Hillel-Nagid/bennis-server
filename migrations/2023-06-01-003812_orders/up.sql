@@ -1,14 +1,15 @@
 
 CREATE TABLE customer_info (
   id serial PRIMARY KEY NOT NULL,
-  phone text,
-  name text NOT NULL
+  name text NOT NULL,
+  phone text
 );
 
 CREATE TABLE orders (
   id serial NOT NULL PRIMARY KEY,
-  customer integer REFERENCES customer_info (id),
+  customer_id integer NOT NULL REFERENCES customer_info (id),
+  customer_name text NOT NULL,
   components text NOT NULL,
   price float8 NOT NULL,
-  status order_status NOT NULL DEFAULT 'Processing'
+  status integer DEFAULT 0
 );
