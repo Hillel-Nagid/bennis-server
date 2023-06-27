@@ -1,14 +1,15 @@
+use std::fmt::Display;
+
+use crate::schema::{self, *};
 use diesel::{
-    Queryable,
-    Insertable,
-    deserialize::{ FromSql, FromSqlRow },
-    pg::{ Pg, sql_types },
-    sql_types::{ Text, Integer },
-    serialize::{ ToSql, Output, self },
+    deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
+    pg::{sql_types, Pg},
+    serialize::{self, Output, ToSql},
+    sql_types::{Integer, Text},
+    Insertable, Queryable,
 };
-use serde::{ Serialize, Deserialize };
-use crate::schema::{ *, self };
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
 #[diesel(sql_type = Integer)]
@@ -18,7 +19,7 @@ pub enum OrderStatus {
 }
 impl FromSql<Integer, Pg> for OrderStatus {
     fn from_sql(
-        bytes: <Pg as diesel::backend::Backend>::RawValue<'_>
+        bytes: <Pg as diesel::backend::Backend>::RawValue<'_>,
     ) -> diesel::deserialize::Result<Self> {
         match <i32 as FromSql<Integer, Pg>>::from_sql(bytes)? {
             0 => Ok(OrderStatus::Processing),
@@ -72,14 +73,7 @@ pub struct NewMenuItem<'a> {
 }
 
 #[derive(
-    Serialize,
-    Deserialize,
-    Queryable,
-    Selectable,
-    AsChangeset,
-    Identifiable,
-    PartialEq,
-    Clone
+    Serialize, Deserialize, Queryable, Selectable, AsChangeset, Identifiable, PartialEq, Clone,
 )]
 #[diesel(table_name = orders)]
 pub struct Order {
@@ -91,15 +85,32 @@ pub struct Order {
     pub status: Option<OrderStatus>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Insertable, PartialEq, Clone)]
-#[diesel(table_name = orders)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct NewOrder {
     pub customer_name: String,
     pub components: String,
     pub price: f64,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset, Eq, PartialEq)]
+impl Display for NewOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "{} ordered {} for {} shekels",
+            self.customer_name, self.components, self.price
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Insertable, PartialEq, Clone)]
+#[diesel(table_name = orders)]
+pub struct InsertableOrder {
+    pub customer_id: i32,
+    pub customer_name: String,
+    pub components: String,
+    pub price: f64,
+}
+#[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset, Eq, PartialEq, Clone)]
 #[diesel(table_name = customer_info)]
 pub struct CustomerInfo {
     pub id: i32,
