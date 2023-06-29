@@ -53,7 +53,7 @@ pub struct NewAddition<'a> {
     pub image_url: Option<&'a str>,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset)]
+#[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset, Clone)]
 #[diesel(table_name = menu_items)]
 pub struct MenuItem {
     pub id: i32,
@@ -65,11 +65,20 @@ pub struct MenuItem {
 
 #[derive(Serialize, Deserialize, Debug, Insertable)]
 #[diesel(table_name = menu_items)]
-pub struct NewMenuItem<'a> {
-    pub name: &'a str,
-    pub additions: Option<&'a str>,
+pub struct NewMenuItem {
+    pub name: String,
+    pub additions: Option<String>,
     pub price: f64,
-    pub image_url: Option<&'a str>,
+    pub image_url: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+
+pub struct UpdateableMenuItem {
+    pub name: Option<String>,
+    pub additions: Option<String>,
+    pub price: Option<f64>,
+    pub image_url: Option<String>,
 }
 
 #[derive(
@@ -109,6 +118,12 @@ pub struct InsertableOrder {
     pub customer_name: String,
     pub components: String,
     pub price: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct UpdateableOrder {
+    pub id: i32,
+    pub status: Option<OrderStatus>,
 }
 #[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset, Eq, PartialEq, Clone)]
 #[diesel(table_name = customer_info)]
