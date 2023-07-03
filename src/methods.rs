@@ -73,24 +73,27 @@ pub async fn post_order(Json(order): Json<NewOrder>) -> (StatusCode, Json<NewOrd
     (StatusCode::CREATED, Json(order))
 }
 
-pub async fn get_single_order(Path(id): Path<i32>) -> (StatusCode, Json<Order>) {
+pub async fn get_single_order(Path(uid): Path<i32>) -> (StatusCode, Json<Order>) {
     use crate::schema::orders::dsl::*;
 
     let connection = &mut establish_connection();
     let result = orders
-        .find(id)
+        .find(uid)
         .load::<Order>(connection)
         .expect("failed getting order");
     (StatusCode::OK, Json(result[0].clone()))
 }
 
-pub async fn update_order(Json(changes): Json<UpdateableOrder>) -> (StatusCode, Json<Order>) {
+pub async fn update_order(
+    Path(uid): Path<i32>,
+    Json(new_status): Json<OrderStatus>,
+) -> (StatusCode, Json<Order>) {
     use crate::schema::orders::dsl::*;
 
     let connection = &mut establish_connection();
     let updated_order = update(orders)
-        .filter(id.eq(changes.id))
-        .set(status.eq(changes.status))
+        .filter(id.eq(uid))
+        .set(status.eq(new_status))
         .get_result::<Order>(connection)
         .expect("Failed updating order {}");
     (StatusCode::OK, Json(updated_order))
@@ -117,12 +120,12 @@ pub async fn get_menu() -> (StatusCode, Json<Vec<MenuItem>>) {
     (StatusCode::OK, Json(result))
 }
 
-pub async fn get_menu_item(Path(id): Path<i32>) -> (StatusCode, Json<MenuItem>) {
+pub async fn get_menu_item(Path(uid): Path<i32>) -> (StatusCode, Json<MenuItem>) {
     use crate::schema::menu_items::dsl::*;
 
     let connection = &mut establish_connection();
     let result = menu_items
-        .find(id)
+        .find(uid)
         .load::<MenuItem>(connection)
         .expect("failed getting menu item");
     (StatusCode::OK, Json(result[0].clone()))
@@ -134,17 +137,18 @@ pub async fn post_menu_item(Json(item): Json<NewMenuItem>) -> (StatusCode, Json<
     let connection = &mut establish_connection();
     let insertion = insert_into(menu_items).values(&item).execute(connection);
     assert_eq!(insertion, Ok(1));
+    println!("{}", item);
     (StatusCode::OK, Json(item))
 }
 
 pub async fn update_menu_item(
-    Path(id): Path<i32>,
+    Path(uid): Path<i32>,
     Json(updates): Json<UpdateableMenuItem>,
 ) -> (StatusCode, Json<MenuItem>) {
     use crate::schema::menu_items::dsl::*;
 
     let connection = &mut establish_connection();
-    let updated_order: Result<Vec<MenuItem>, _> = menu_items.find(id).load::<MenuItem>(connection);
+    let updated_order: Result<Vec<MenuItem>, _> = menu_items.find(uid).load::<MenuItem>(connection);
     let mut item_for_update: MenuItem = match updated_order {
         Ok(items) => items[0].clone(),
         Err(e) => panic!("{e}"),
@@ -168,18 +172,18 @@ pub async fn update_menu_item(
     };
 
     let updated_item = update(menu_items)
-        .filter(id.eq(id))
+        .filter(id.eq(uid))
         .set(&item_for_update)
         .get_result(connection)
         .expect("Failed updating menu item");
     (StatusCode::OK, Json(updated_item))
 }
 
-pub async fn delete_menu_item(Path(id): Path<i32>) -> (StatusCode, Json<MenuItem>) {
+pub async fn delete_menu_item(Path(uid): Path<i32>) -> (StatusCode, Json<MenuItem>) {
     use crate::schema::menu_items::dsl::*;
 
     let connection = &mut establish_connection();
-    let deleted_item = delete(menu_items.filter(id.eq(id)))
+    let deleted_item = delete(menu_items.filter(id.eq(uid)))
         .get_result::<MenuItem>(connection)
         .expect("Failed deleting menu item");
     (StatusCode::OK, Json(deleted_item))

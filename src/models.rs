@@ -72,6 +72,16 @@ pub struct NewMenuItem {
     pub image_url: Option<String>,
 }
 
+impl Display for NewMenuItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "A new dish ({}) was just added and its base price is {} shekels",
+            self.name, self.price
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 
 pub struct UpdateableMenuItem {
@@ -120,11 +130,6 @@ pub struct InsertableOrder {
     pub price: f64,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct UpdateableOrder {
-    pub id: i32,
-    pub status: Option<OrderStatus>,
-}
 #[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset, Eq, PartialEq, Clone)]
 #[diesel(table_name = customer_info)]
 pub struct CustomerInfo {
