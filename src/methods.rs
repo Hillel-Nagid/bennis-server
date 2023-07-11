@@ -19,14 +19,17 @@ fn establish_connection() -> PgConnection {
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 
-pub async fn get_orders() -> (StatusCode, Json<Vec<Order>>) {
+pub async fn get_orders() -> (StatusCode, Json<Vec<ParsableOrder>>) {
     use crate::schema::orders::dsl::*;
 
     let connection = &mut establish_connection();
     let result = orders
         .load::<Order>(connection)
         .expect("Failed getting orders");
-    (StatusCode::OK, Json(result))
+    (
+        StatusCode::OK,
+        Json(result.iter().map(Order::parse_components).collect()),
+    )
 }
 
 pub async fn post_order(Json(order): Json<NewOrder>) -> (StatusCode, Json<NewOrder>) {
@@ -73,7 +76,7 @@ pub async fn post_order(Json(order): Json<NewOrder>) -> (StatusCode, Json<NewOrd
     (StatusCode::CREATED, Json(order))
 }
 
-pub async fn get_single_order(Path(uid): Path<i32>) -> (StatusCode, Json<Order>) {
+pub async fn get_single_order(Path(uid): Path<i32>) -> (StatusCode, Json<ParsableOrder>) {
     use crate::schema::orders::dsl::*;
 
     let connection = &mut establish_connection();
@@ -81,7 +84,7 @@ pub async fn get_single_order(Path(uid): Path<i32>) -> (StatusCode, Json<Order>)
         .find(uid)
         .load::<Order>(connection)
         .expect("failed getting order");
-    (StatusCode::OK, Json(result[0].clone()))
+    (StatusCode::OK, Json(result[0].clone().parse_components()))
 }
 
 pub async fn update_order(
@@ -109,7 +112,7 @@ pub async fn delete_order(Path(id): Path<i32>) -> (StatusCode, Json<Order>) {
     (StatusCode::OK, Json(deleted_order))
 }
 
-pub async fn get_menu() -> (StatusCode, Json<Vec<MenuItem>>) {
+pub async fn get_menu() -> (StatusCode, Json<Vec<ParsableMenuItem>>) {
     use crate::schema::menu_items::dsl::*;
 
     let connection = &mut establish_connection();
@@ -117,10 +120,13 @@ pub async fn get_menu() -> (StatusCode, Json<Vec<MenuItem>>) {
         .load::<MenuItem>(connection)
         .expect("Failed getting the menu");
 
-    (StatusCode::OK, Json(result))
+    (
+        StatusCode::OK,
+        Json(result.iter().map(MenuItem::parse_components).collect()),
+    )
 }
 
-pub async fn get_menu_item(Path(uid): Path<i32>) -> (StatusCode, Json<MenuItem>) {
+pub async fn get_menu_item(Path(uid): Path<i32>) -> (StatusCode, Json<ParsableMenuItem>) {
     use crate::schema::menu_items::dsl::*;
 
     let connection = &mut establish_connection();
@@ -128,7 +134,7 @@ pub async fn get_menu_item(Path(uid): Path<i32>) -> (StatusCode, Json<MenuItem>)
         .find(uid)
         .load::<MenuItem>(connection)
         .expect("failed getting menu item");
-    (StatusCode::OK, Json(result[0].clone()))
+    (StatusCode::OK, Json(result[0].clone().parse_components()))
 }
 
 pub async fn post_menu_item(Json(item): Json<NewMenuItem>) -> (StatusCode, Json<NewMenuItem>) {

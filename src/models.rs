@@ -70,7 +70,7 @@ pub struct MenuItem {
     pub image_url: Option<String>,
 }
 impl MenuItem {
-    fn parse_components(&self) -> Json<ParsableMenuItem> {
+    pub fn parse_components(&self) -> ParsableMenuItem {
         let parsed: ParsableMenuItem;
         if let Some(additions) = self.clone().additions {
             parsed = ParsableMenuItem {
@@ -89,7 +89,7 @@ impl MenuItem {
                 image_url: self.clone().image_url.unwrap_or(String::from("")),
             };
         }
-        Json(parsed)
+        parsed
     }
 }
 
@@ -102,7 +102,7 @@ pub struct NewMenuItem {
     pub image_url: Option<String>,
 }
 impl NewMenuItem {
-    fn parse_components(&self, id: i32) -> Json<ParsableMenuItem> {
+    pub fn parse_components(&self, id: i32) -> ParsableMenuItem {
         let parsed: ParsableMenuItem;
         if let Some(additions) = self.additions.clone() {
             parsed = ParsableMenuItem {
@@ -121,7 +121,7 @@ impl NewMenuItem {
                 image_url: self.image_url.clone().unwrap_or(String::from("")),
             };
         }
-        Json(parsed)
+        parsed
     }
 }
 impl Display for NewMenuItem {
@@ -166,7 +166,7 @@ pub struct Order {
 }
 
 impl Order {
-    fn parse_components(&self) -> Json<ParsableOrder> {
+    pub fn parse_components(&self) -> ParsableOrder {
         let parsed: ParsableOrder;
         parsed = ParsableOrder {
             id: self.id,
@@ -176,7 +176,7 @@ impl Order {
             price: self.price,
             status: self.status.unwrap_or(OrderStatus::Processing),
         };
-        Json(parsed)
+        parsed
     }
 }
 
@@ -188,7 +188,7 @@ pub struct NewOrder {
 }
 
 impl NewOrder {
-    fn parse_components(&self, id: i32, cust_id: i32) -> Json<ParsableOrder> {
+    pub fn parse_components(&self, id: i32, cust_id: i32) -> ParsableOrder {
         let parsed: ParsableOrder;
         parsed = ParsableOrder {
             id,
@@ -198,7 +198,7 @@ impl NewOrder {
             price: self.price,
             status: OrderStatus::Processing,
         };
-        Json(parsed)
+        parsed
     }
 }
 
