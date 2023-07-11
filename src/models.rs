@@ -1,6 +1,10 @@
 use std::fmt::Display;
 
-use crate::schema::{self, *};
+use crate::schema::{
+    self,
+    orders::{components, customer_id},
+    *,
+};
 use axum::Json;
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
@@ -12,9 +16,7 @@ use diesel::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json;
-trait Parsable {
-    fn parse_components<T>(&self) -> Json<T>;
-}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
 #[diesel(sql_type = Integer)]
 pub enum OrderStatus {
@@ -40,7 +42,7 @@ impl ToSql<Integer, Pg> for OrderStatus {
         }
     }
 }
-#[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset)]
+#[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset, Debug, PartialEq, Clone)]
 #[diesel(table_name = additions)]
 pub struct Addition {
     pub id: i32,
@@ -49,20 +51,13 @@ pub struct Addition {
     pub image_url: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Insertable)]
-#[diesel(table_name = additions)]
-pub struct NewAddition<'a> {
-    pub name: &'a str,
-    pub price: f64,
-    pub image_url: Option<&'a str>,
-}
-
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ParsableMenuItem {
     pub id: i32,
     pub name: String,
-    pub additions: Result<Vec<Addition>, serde_json::Error>,
+    pub additions: Vec<Addition>,
     pub price: f64,
-    pub image_url: Option<String>,
+    pub image_url: String,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, AsChangeset, Clone)]
@@ -74,24 +69,24 @@ pub struct MenuItem {
     pub price: f64,
     pub image_url: Option<String>,
 }
-impl Parsable for MenuItem {
+impl MenuItem {
     fn parse_components(&self) -> Json<ParsableMenuItem> {
         let parsed: ParsableMenuItem;
-        if let Some(additions) = self.additions {
+        if let Some(additions) = self.clone().additions {
             parsed = ParsableMenuItem {
                 id: self.id,
-                name: self.name,
-                additions: serde_json::from_str(&additions),
+                name: self.clone().name,
+                additions: serde_json::from_str(&additions).expect("failed parsing additions"),
                 price: self.price,
-                image_url: self.image_url,
+                image_url: self.clone().image_url.unwrap_or(String::from("")),
             };
         } else {
             parsed = ParsableMenuItem {
                 id: self.id,
-                name: self.name,
-                additions: Ok(vec![]),
+                name: self.clone().name,
+                additions: vec![],
                 price: self.price,
-                image_url: self.image_url,
+                image_url: self.clone().image_url.unwrap_or(String::from("")),
             };
         }
         Json(parsed)
@@ -106,7 +101,29 @@ pub struct NewMenuItem {
     pub price: f64,
     pub image_url: Option<String>,
 }
-impl Parsable for NewMenuItem {}
+impl NewMenuItem {
+    fn parse_components(&self, id: i32) -> Json<ParsableMenuItem> {
+        let parsed: ParsableMenuItem;
+        if let Some(additions) = self.additions.clone() {
+            parsed = ParsableMenuItem {
+                id,
+                name: (*self.name).to_owned(),
+                additions: serde_json::from_str(&additions).expect("failed parsing additions"),
+                price: self.price,
+                image_url: self.image_url.clone().unwrap_or(String::from("")),
+            };
+        } else {
+            parsed = ParsableMenuItem {
+                id: id,
+                name: self.name.clone(),
+                additions: vec![],
+                price: self.price,
+                image_url: self.image_url.clone().unwrap_or(String::from("")),
+            };
+        }
+        Json(parsed)
+    }
+}
 impl Display for NewMenuItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
@@ -125,6 +142,15 @@ pub struct UpdateableMenuItem {
     pub price: Option<f64>,
     pub image_url: Option<String>,
 }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ParsableOrder {
+    pub id: i32,
+    pub customer_id: i32,
+    pub customer_name: String,
+    pub components: Vec<ParsableMenuItem>,
+    pub price: f64,
+    pub status: OrderStatus,
+}
 
 #[derive(
     Serialize, Deserialize, Queryable, Selectable, AsChangeset, Identifiable, PartialEq, Clone,
@@ -138,7 +164,21 @@ pub struct Order {
     pub price: f64,
     pub status: Option<OrderStatus>,
 }
-impl Parsable for Order {}
+
+impl Order {
+    fn parse_components(&self) -> Json<ParsableOrder> {
+        let parsed: ParsableOrder;
+        parsed = ParsableOrder {
+            id: self.id,
+            customer_id: self.customer_id,
+            customer_name: self.customer_name.clone(),
+            components: serde_json::from_str(&self.components).expect("failed parsing components"),
+            price: self.price,
+            status: self.status.unwrap_or(OrderStatus::Processing),
+        };
+        Json(parsed)
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct NewOrder {
@@ -146,7 +186,21 @@ pub struct NewOrder {
     pub components: String,
     pub price: f64,
 }
-impl Parsable for NewOrder {}
+
+impl NewOrder {
+    fn parse_components(&self, id: i32, cust_id: i32) -> Json<ParsableOrder> {
+        let parsed: ParsableOrder;
+        parsed = ParsableOrder {
+            id,
+            customer_id: cust_id,
+            customer_name: self.customer_name.clone(),
+            components: serde_json::from_str(&self.components).expect("failed parsing components"),
+            price: self.price,
+            status: OrderStatus::Processing,
+        };
+        Json(parsed)
+    }
+}
 
 impl Display for NewOrder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
